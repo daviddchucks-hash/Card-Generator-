@@ -1,0 +1,159 @@
+<!DOCTYPE html><!DOCTYPE html>
+<html>
+<head>
+    <title>Multi-Network Card Forge</title>
+    <style>
+        :root { --primary: #0f3460; --accent: #e94560; --bg: #1a1a2e; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #fff; display: flex; flex-direction: column; align-items: center; padding: 40px; }
+        .container { background: #16213e; padding: 30px; border-radius: 20px; width: 480px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border: 1px solid #0f3460; }
+        
+        #skin {
+            background: linear-gradient(135deg, #2c3e50, #000000);
+            padding: 25px; border-radius: 15px; margin-bottom: 25px;
+            transition: 0.5s ease; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .chip { width: 45px; height: 35px; background: linear-gradient(45deg, #f1c40f, #d4af37); border-radius: 6px; margin-bottom: 30px; }
+        #displayNum { font-size: 22px; letter-spacing: 2px; font-family: monospace; display: block; margin-bottom: 15px; }
+        
+        .btn-group { display: flex; gap: 10px; margin: 15px 0; }
+        .btn-group button { flex: 1; padding: 10px; background: #2c3e50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-group button:hover { background: var(--accent); }
+        
+        select { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; background: #0f3460; color: white; border: 1px solid #ffffff33; outline: none; }
+        
+        #logContainer { 
+            margin-top: 20px; max-height: 200px; overflow-y: auto; 
+            background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px; 
+            font-family: monospace; font-size: 13px; display: none;
+        }
+        .log-entry { padding: 8px; border-bottom: 1px solid #ffffff11; display: flex; justify-content: space-between; }
+        
+        .score-bar { height: 6px; background: #ffffff22; border-radius: 3px; margin: 8px 0; overflow: hidden; }
+        .score-fill { height: 100%; width: 0%; background: #27ae60; transition: 0.5s; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="skin">
+        <div style="display:flex; justify-content:space-between">
+            <div class="chip"></div>
+            <strong id="brandDisplay">CARD</strong>
+        </div>
+        <span id="displayNum">**** **** **** ****</span>
+        <div style="display:flex; justify-content:space-between; font-size:12px; opacity:0.8">
+            <span>EXP: <strong id="displayExp">MM/YY</strong></span>
+            <span>CVV: <strong id="displayCvv">***</strong></span>
+        </div>
+    </div>
+
+    <label>Select Network:</label>
+    <select id="network">
+        <option value="4">Visa</option>
+        <option value="51">Mastercard</option>
+        <option value="37">American Express</option>
+        <option value="5061">Verve</option>
+    </select>
+
+    <label>Generate Amount:</label>
+    <div class="btn-group">
+        <button onclick="bulkGenerate(1)">1</button>
+        <button onclick="bulkGenerate(5)">5</button>
+        <button onclick="bulkGenerate(10)">10</button>
+        <button onclick="bulkGenerate(100)">100</button>
+    </div>
+
+    <div class="score-bar"><div id="scoreFill" class="score-fill"></div></div>
+    <div id="logContainer"></div>
+</div>
+
+<script>
+function bulkGenerate(count) {
+    const log = document.getElementById("logContainer");
+    const prefix = document.getElementById("network").value;
+    log.innerHTML = ""; 
+    log.style.display = "block";
+
+    for(let i = 0; i < count; i++) {
+        let cardData = createCard(prefix);
+        if(i === 0) updateUI(cardData, prefix);
+
+        let entry = document.createElement("div");
+        entry.className = "log-entry";
+        entry.innerHTML = `<span>${cardData.number}</span> <span>${cardData.exp} | ${cardData.cvv}</span>`;
+        log.appendChild(entry);
+    }
+    log.scrollTop = 0;
+}
+
+function createCard(prefix) {
+    let length = (prefix === "37") ? 15 : 16;
+    let num = prefix;
+
+    while (num.length < length - 1) {
+        num += Math.floor(Math.random() * 10);
+    }
+    num += calculateLuhnDigit(num);
+    
+    let month = (Math.floor(Math.random() * 12) + 1).toString().padStart(2, '0');
+    let year = (new Date().getFullYear() + 3).toString().slice(-2);
+    let cvv = (prefix === "37") ? Math.floor(1000 + Math.random() * 8999) : Math.floor(100 + Math.random() * 899);
+
+    return { number: num, exp: `${month}/${year}`, cvv: cvv };
+}
+
+function calculateLuhnDigit(partial) {
+    let sum = 0;
+    let digits = partial.split('').reverse();
+    for (let i = 0; i < digits.length; i++) {
+        let n = parseInt(digits[i]);
+        if (i % 2 === 0) { n *= 2; if (n > 9) n -= 9; }
+        sum += n;
+    }
+    return (10 - (sum % 10)) % 10;
+}
+
+function updateUI(data, prefix) {
+    document.getElementById("displayNum").innerText = data.number.replace(/(.{4})/g, '$1 ').trim();
+    document.getElementById("displayExp").innerText = data.exp;
+    document.getElementById("displayCvv").innerText = data.cvv;
+    
+    const s = document.getElementById("skin");
+    const b = document.getElementById("brandDisplay");
+    
+    // Fixed detection logic
+    if(prefix.startsWith("4")) { 
+        s.style.background = "linear-gradient(135deg, #1a1aff, #000080)"; 
+        b.innerText="VISA"; 
+    }
+    else if(prefix.startsWith("51")) { 
+        s.style.background = "linear-gradient(135deg, #ff5f6d, #ffc371)"; 
+        b.innerText="Mastercard"; 
+    }
+    else if(prefix.startsWith("37")) { 
+        s.style.background = "linear-gradient(135deg, #2ecc71, #27ae60)"; 
+        b.innerText="AMEX"; 
+    }
+    else if(prefix.startsWith("5061")) { 
+        s.style.background = "linear-gradient(135deg, #b8860b, #daa520)"; 
+        b.innerText="VERVE"; 
+    }
+
+    document.getElementById("scoreFill").style.width = "100%";
+}
+</script>
+
+</body>
+</html>
+
+<html>
+<head>
+  <meta http-equiv="CONTENT-TYPE" content="text/html; charset=UTF-8">
+  <title>Hello, World!</title>
+</head>
+<body>
+  <h1>
+    Hello, World!
+  </h1>
+</body>
+</html>
